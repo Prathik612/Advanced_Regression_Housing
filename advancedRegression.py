@@ -98,6 +98,21 @@ class LinearRegressionv1(nn.Module):
     def forward(self, x):
         return self.layer_stack(x)
     
+class LinearRegressionv2(nn.Module):
+    def __init__(self, input_shape:int, hidden_units: int, output_shape: int):
+        super().__init__()
+        self.layer_stack = nn.Sequential(nn.Linear(in_features= input_shape,
+                                                   out_features= hidden_units),
+                                         nn.Linear(in_features= hidden_units,
+                                                   out_features=hidden_units),
+                                         nn.Linear(in_features= hidden_units,
+                                                   out_features=hidden_units),
+                                         nn.Linear(in_features=hidden_units,
+                                                   out_features= output_shape),
+                                         nn.ReLU())
+    def forward(self, x):
+        return self.layer_stack(x)
+    
 model = LinearRegressionv1(input_shape=314, hidden_units=211, output_shape=1).to(device)
 
 loss_fn = nn.MSELoss()
@@ -195,68 +210,35 @@ model_results = eval_model(model=model,
 
 test_data = pd.read_csv("house-prices-advanced-regression-techniques\\test.csv")
 
-submission_id = test_data["Id"].copy()
-X_submission = cleanData(test_data)
+sub_id = test_data["Id"].copy()
+X_sub = cleanData(test_data)
 train_cols = X_data.columns
-submission_cols = X_submission.columns
-diff = train_cols.difference(submission_cols)
+sub_cols = X_sub.columns
+diff = train_cols.difference(sub_cols)
 
 added_rows = 0 
 idx = len(test_data) # Where added row should be modified
 
-df_test_copy = test_data.copy() # Copy so we don't ruin the dataframe
-eg_row = test_data.iloc[0] # Example row
+test_data_temp = test_data.copy() # Copy so we don't ruin the dataframe
+temp_row = test_data.iloc[0] # Example row
 
 for string in diff:
-    df_test_copy.append(eg_row) # Append the example row at the end of dataframe
+    test_data_temp.append(temp_row) # Append the example row at the end of dataframe
     col, value = string.split('_') # Split into column and value
-    df_test_copy.loc[idx, col] = value
+    test_data_temp.loc[idx, col] = value
     idx += 1
     added_rows += 1
 
-df_test_copy = cleanData(df_test_copy) # Preprocess the copy
-X_submission = df_test_copy.drop(df_test_copy.tail(added_rows).index) # Remove the added rows
-X_submission = torch.tensor(X_submission.values).float().to(device)
+test_data_temp = cleanData(test_data_temp) # Preprocess the copy
+X_sub = test_data_temp.drop(test_data_temp.tail(added_rows).index) # Remove the added rows
+X_sub = torch.tensor(X_sub.values).float().to(device)
 
-y_submission = model(X_submission).squeeze() # Make it into array
-y_submission = torch.exp(y_submission) # Scale back to normal value 
-y_submission = y_submission.cpu().detach().numpy() # Change to numpy
-submission = pd.DataFrame({"Id":submission_id, "SalePrice":y_submission}) # Make dataframe for submissino
+y_sub = model(X_sub).squeeze() # Make it into array
+y_sub = torch.exp(y_sub) # Scale back to normal value 
+y_sub = y_sub.cpu().detach().numpy() # Change to numpy
+submission = pd.DataFrame({"Id":sub_id, "SalePrice":y_sub}) # Make dataframe for submissino
 submission.to_csv('submission.csv', index=False)
 
-
-
-
-'''
-print(model_results)
-#plt.plot(epoch_count, training_loss, label= "Train loss", linestyle="--")
-#plt.plot(epoch_count, testing_loss, label = "Test loss")
-#plt.legend()
-#plt.show()
-
-MODEL_PATH = Path("model")
-MODEL_PATH.mkdir(parents = True, exist_ok = True)
-
-MODEL_NAME = "first_model.pth"
-MODEL_SAVE_PATH = MODEL_PATH / MODEL_NAME
-
-print(f"Saving model to: {MODEL_SAVE_PATH}")
-
-torch.save(obj = model.state_dict(), f = MODEL_SAVE_PATH)
-'''
-'''
-for epoch in range(epochs):
-    for batch, (X,y) in enumerate(train_dataloader):
-        model.train()
-
-        y_pred = model(X)
-        loss = loss_fn(y_pred, y)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if batch % 400 == 0:
-           print(f"Looked at {batch * len(X)}/{len(train_dataloader.dataset)} samples.")'''
 
 #print("New: \n")
 #print(train_data.isnull().sum().to_string())
